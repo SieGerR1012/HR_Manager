@@ -1,8 +1,9 @@
 ﻿using HR_Manager.Data;
+using HR_Manager.DTOs;
 using HR_Manager.Models;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.JsonPatch;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -23,7 +24,16 @@ public class PositionController : ControllerBase
             .Include(p => p.SalaryGrade)
             .ToListAsync();
 
-        return Ok(positions);
+        var result = positions.Select(p => new PositionDto
+        {
+            PositionId = p.PositionId,
+            Title = p.Title,
+            DepartmentName = p.Department!.Name,
+            MinSalary = p.SalaryGrade != null ? p.SalaryGrade.MinSalary : 0,
+            MaxSalary = p.SalaryGrade != null ? p.SalaryGrade.MaxSalary : 0
+        });
+
+        return Ok(result);
     }
 
     [HttpPost]

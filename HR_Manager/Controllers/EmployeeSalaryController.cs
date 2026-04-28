@@ -1,4 +1,5 @@
 ﻿using HR_Manager.Data;
+using HR_Manager.DTOs;
 using HR_Manager.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,12 +21,16 @@ public class EmployeeSalaryController : ControllerBase
         var salaries = await _context.EmployeeSalaries
             .Include(s => s.Employee)
                 .ThenInclude(e => e.Person)
-            .Include(s => s.Employee)
-                .ThenInclude(e => e.Position)
-                    .ThenInclude(p => p.Department)
             .ToListAsync();
 
-        return Ok(salaries);
+        var result = salaries.Select(s => new EmployeeSalaryDto
+        {
+            EmployeeSalaryId = s.EmployeeSalaryId,
+            EmployeeName = $"{s.Employee!.Person!.LastName} {s.Employee.Person.FirstName}",
+            Amount = s.Amount
+        });
+
+        return Ok(result);
     }
 
     [HttpGet("{id}")]

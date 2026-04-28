@@ -1,4 +1,5 @@
 ﻿using HR_Manager.Data;
+using HR_Manager.DTOs;
 using HR_Manager.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,11 +21,19 @@ namespace HR_Manager.Controllers
         public async Task<IActionResult> Get()
         {
             var addresses = await _context.Addresses
-                .Include(a => a.Person)
                 .Include(a => a.City)
+                .Include(a => a.Person)
                 .ToListAsync();
 
-            return Ok(addresses);
+            var result = addresses.Select(a => new AddressDto
+            {
+                AddressId = a.AddressId,
+                Street = $"{a.Street}, {a.House}",
+                CityName = a.City!.CityName,
+                PersonName = $"{a.Person!.LastName} {a.Person.FirstName}"
+            });
+
+            return Ok(result);
         }
 
         [HttpGet("{id}")]

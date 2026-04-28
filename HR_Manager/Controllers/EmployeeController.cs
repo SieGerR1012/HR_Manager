@@ -1,4 +1,5 @@
 ﻿using HR_Manager.Data;
+using HR_Manager.DTOs;
 using HR_Manager.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,30 +24,44 @@ namespace HR_Manager.Controllers
                 .Include(e => e.Person)
                 .Include(e => e.Position)
                     .ThenInclude(p => p.Department)
-                .Include(e => e.Position)
-                    .ThenInclude(p => p.SalaryGrade)
                 .Include(e => e.Salaries)
                 .ToListAsync();
 
-            return Ok(employees);
+            var result = employees.Select(e => new EmployeeDto
+            {
+                EmployeeId = e.EmployeeId,
+                FullName = $"{e.Person!.LastName} {e.Person.FirstName}",
+                PositionTitle = e.Position!.Title,
+                DepartmentName = e.Position.Department!.Name,
+                Salary = e.Salaries.FirstOrDefault()?.Amount
+            });
+
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var employee = await _context.Employees
+            var e = await _context.Employees
                 .Include(e => e.Person)
                 .Include(e => e.Position)
                     .ThenInclude(p => p.Department)
-                .Include(e => e.Position)
-                    .ThenInclude(p => p.SalaryGrade)
                 .Include(e => e.Salaries)
                 .FirstOrDefaultAsync(e => e.EmployeeId == id);
 
-            if (employee == null)
+            if (e == null)
                 return NotFound();
 
-            return Ok(employee);
+            var result = new EmployeeDto
+            {
+                EmployeeId = e.EmployeeId,
+                FullName = $"{e.Person!.LastName} {e.Person.FirstName}",
+                PositionTitle = e.Position!.Title,
+                DepartmentName = e.Position.Department!.Name,
+                Salary = e.Salaries.FirstOrDefault()?.Amount
+            };
+
+            return Ok(result);
         }
 
         [HttpPost]

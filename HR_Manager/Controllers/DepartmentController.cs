@@ -1,4 +1,5 @@
 ﻿using HR_Manager.Data;
+using HR_Manager.DTOs;
 using HR_Manager.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,11 +21,15 @@ public class DepartmentController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var departments = await _context.Departments
-            .Include(d => d.Positions)
-            .ToListAsync();
+        var departments = await _context.Departments.ToListAsync();
 
-        return Ok(departments);
+        var result = departments.Select(d => new DepartmentDto
+        {
+            DepartmentId = d.DepartmentId,
+            Name = d.Name
+        });
+
+        return Ok(result);
     }
 
     // GET: api/department/1
