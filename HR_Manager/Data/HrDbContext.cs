@@ -19,4 +19,12 @@ public class HrDbContext : DbContext
 
     public DbSet<SalaryGrade> SalaryGrades => Set<SalaryGrade>();
     public DbSet<EmployeeSalary> EmployeeSalaries => Set<EmployeeSalary>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Position>()
+            .HasOne(p => p.SalaryGrade)
+            .WithMany()
+            .HasForeignKey(p => p.GradeId);
+    }
 }

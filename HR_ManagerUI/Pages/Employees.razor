@@ -1,0 +1,185 @@
+﻿@page "/employees"
+@using HR_ManagerUI.Models
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0">Сотрудники компании</h3>
+
+    <button class="btn btn-primary" @onclick="ShowCreate">
+        Создать
+    </button>
+</div>
+
+@if (employees == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Ф.И.О.</th>
+                <th>Должность</th>
+                <th>Департамент</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var e in employees)
+            {
+                <tr>
+                    <td>@e.FullName</td>
+                    <td>@e.PositionTitle</td>
+                    <td>@e.DepartmentName</td>
+
+                    <td>
+                        <button class="btn btn-warning btn-sm me-2"
+                                @onclick="() => Edit(e.EmployeeId)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-danger btn-sm"
+                                @onclick="() => Delete(e.EmployeeId)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (isFormVisible)
+{
+    <div class="card p-3 mb-3">
+
+        <h5>Person</h5>
+
+        <input class="form-control mb-2" placeholder="LastName" @bind="model.LastName" />
+        <input class="form-control mb-2" placeholder="FirstName" @bind="model.FirstName" />
+        <input class="form-control mb-2" placeholder="MiddleName" @bind="model.MiddleName" />
+
+        <input type="date" class="form-control mb-2" @bind="model.BirthDate" />
+        <input class="form-control mb-2" placeholder="+7..." @bind="model.ContactNumber" />
+
+        <h5>Address</h5>
+
+        <input class="form-control mb-2" placeholder="Street" @bind="model.Street" />
+        <input class="form-control mb-2" placeholder="House" @bind="model.House" />
+        <input class="form-control mb-2" placeholder="Apartment" @bind="model.Apartment" />
+
+        <select class="form-control mb-2" @bind="model.CityId">
+            <option value="0">Выберите город</option>
+            @foreach (var c in cities)
+            {
+                <option value="@c.CityId">@c.CityName</option>
+            }
+        </select>
+
+        <h5>Position</h5>
+
+        <select class="form-control mb-2" @bind="model.PositionId">
+            <option value="0">Выберите должность</option>
+            @foreach (var p in positions)
+            {
+                <option value="@p.PositionId">@p.Title</option>
+            }
+        </select>
+
+        <h5>Salary</h5>
+
+        <input type="number" class="form-control mb-2" @bind="model.Amount" />
+
+        <button class="btn btn-success me-2" @onclick="Save">Save</button>
+        <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+    </div>
+}
+
+@code {
+    private List<EmployeeDto>? employees;
+    private List<PositionDto>? positions;
+    private List<CityDto>? cities;
+
+    private bool isFormVisible;
+
+    // 🔥 ВАЖНО — ОДИН DTO ДЛЯ ВСЕГО
+    private UpdateEmployeeDto model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        employees = await Http.GetFromJsonAsync<List<EmployeeDto>>("api/employee");
+        positions = await Http.GetFromJsonAsync<List<PositionDto>>("api/position");
+        cities = await Http.GetFromJsonAsync<List<CityDto>>("api/city");
+    }
+
+    private void ShowCreate()
+    {
+        model = new UpdateEmployeeDto();
+        isFormVisible = true;
+    }
+
+    private async Task Edit(int id)
+    {
+        var data = await Http.GetFromJsonAsync<UpdateEmployeeDto>(
+            $"api/employee/{id}"
+        );
+
+        if (data == null)
+        {
+            await JS.InvokeVoidAsync("alert", "Ошибка загрузки сотрудника");
+            return;
+        }
+
+        model = data;
+        isFormVisible = true;
+    }
+
+    private async Task Save()
+    {
+        HttpResponseMessage response;
+
+        if (model.EmployeeId == 0)
+        {
+            response = await Http.PostAsJsonAsync("api/employee", model);
+        }
+        else
+        {
+            response = await Http.PutAsJsonAsync(
+                $"api/employee/{model.EmployeeId}",
+                model
+            );
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("alert", error);
+            return;
+        }
+
+        isFormVisible = false;
+        await LoadAll();
+    }
+
+    private async Task Delete(int id)
+    {
+        bool ok = await JS.InvokeAsync<bool>("confirm", "Удалить сотрудника?");
+        if (!ok) return;
+
+        await Http.DeleteAsync($"api/employee/{id}");
+        await LoadAll();
+    }
+
+    private void Cancel()
+    {
+        isFormVisible = false;
+    }
+}

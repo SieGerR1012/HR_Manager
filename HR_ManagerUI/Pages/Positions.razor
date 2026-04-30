@@ -1,0 +1,179 @@
+﻿@page "/positions"
+@using HR_ManagerUI.Models
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0">Должности компании</h3>
+
+    <button class="btn btn-primary" @onclick="ShowCreate">
+        Создать
+    </button>
+</div>
+
+@if (positions == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Должность</th>
+                <th>Отдел</th>
+                <th>Уровень Зарплаты</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var p in positions)
+            {
+                <tr>
+                    <td>@p.PositionId</td>
+                    <td>@p.Title</td>
+                    <td>@p.DepartmentName</td>
+                    <td>@p.MinSalary - @p.MaxSalary</td>
+
+                    <td>
+                        <button class="btn btn-warning btn-sm"
+                                @onclick="() => Edit(p)">
+                            Изменить
+                        </button>
+
+                        <button class="btn btn-danger btn-sm"
+                                @onclick="() => Delete(p.PositionId)">
+                            Удалить
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (isFormVisible)
+{
+    <div class="card p-3 mb-3">
+
+        <input class="form-control mb-2"
+               placeholder="Title"
+               @bind="model.Title" />
+
+        <select class="form-control mb-2"
+                @bind="model.DepartmentId">
+            <option value="0">Select Department</option>
+            @foreach (var d in departments)
+            {
+                <option value="@d.DepartmentId">@d.Name</option>
+            }
+        </select>
+
+        <input class="form-control mb-2"
+               placeholder="Min Salary"
+               type="number"
+               @bind="model.MinSalary" />
+
+        <input class="form-control mb-2"
+               placeholder="Max Salary"
+               type="number"
+               @bind="model.MaxSalary" />
+
+        <button class="btn btn-success" @onclick="Save">
+            Сохранить
+        </button>
+
+        <button class="btn btn-secondary" @onclick="Cancel">
+            Отменить
+        </button>
+
+    </div>
+}
+
+@code{
+    private List<PositionDto>? positions;
+    private List<DepartmentDto>? departments;
+    private List<SalaryGradeDto>? grades;
+
+    private bool isFormVisible;
+
+    private PositionEditDto model = new();
+
+    private async Task Edit(PositionDto p)
+    {
+        var data = await Http.GetFromJsonAsync<PositionEditDto>(
+            $"api/position/{p.PositionId}"
+        );
+                
+        if (data == null)
+        {
+            await JS.InvokeVoidAsync("alert", "Не удалось загрузить данные позиции");
+            return;
+        }
+
+        model = data;
+        isFormVisible = true;
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        positions = await Http.GetFromJsonAsync<List<PositionDto>>("api/position");
+        departments = await Http.GetFromJsonAsync<List<DepartmentDto>>("api/department");
+        grades = await Http.GetFromJsonAsync<List<SalaryGradeDto>>("api/salarygrade");
+    }
+
+    private void ShowCreate()
+    {
+        model = new PositionEditDto();
+        isFormVisible = true;
+    }
+
+
+    private async Task Save()
+{
+    HttpResponseMessage response;
+
+    if (model.PositionId == 0)
+    {
+        response = await Http.PostAsJsonAsync("api/position", model);
+    }
+    else
+    {
+        response = await Http.PutAsJsonAsync($"api/position/{model.PositionId}", model);
+    }
+
+    if (!response.IsSuccessStatusCode)
+    {
+        var error = await response.Content.ReadAsStringAsync();
+
+        await JS.InvokeVoidAsync("alert", error);
+
+        return;
+    }
+
+    isFormVisible = false;
+    await LoadAll();
+}
+
+    private async Task Delete(int id)
+    {
+        bool ok = await JS.InvokeAsync<bool>("confirm", "Delete position?");
+        if (!ok) return;
+
+        await Http.DeleteAsync($"api/position/{id}");
+        await LoadAll();
+    }
+
+    private void Cancel()
+    {
+        isFormVisible = false;
+    }
+}

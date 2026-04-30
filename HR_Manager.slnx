@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="HR_Manager/HR_Manager.csproj" />
+  <Project Path="HR_ManagerUI/HR_ManagerUI.csproj" Id="0871c997-f4f8-4297-a4f5-ebc448771eb6" />
 </Solution>

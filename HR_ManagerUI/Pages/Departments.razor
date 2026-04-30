@@ -1,0 +1,181 @@
+﻿@page "/departments"
+@using HR_ManagerUI.Models
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0">Отделы компании</h3>
+
+    <button class="btn btn-primary" @onclick="ShowCreateForm">
+        Создать
+    </button>
+</div>
+
+@if (departments == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название отдела</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var d in departments)
+            {
+                <tr>
+                    <td>@d.DepartmentId</td>
+                    <td>
+                        @if (editId == d.DepartmentId)
+                        {
+                            <input class="form-control"
+                                   @bind="editDepartment.Name" />
+                        }
+                        else
+                        {
+                            @d.Name
+                        }
+                    </td>
+
+                    <td>
+                        @if (editId == d.DepartmentId)
+                        {
+                            <button class="btn btn-success btn-sm"
+                                    @onclick="SaveEdit">
+                                Сохранить
+                            </button>
+
+                            <button class="btn btn-secondary btn-sm"
+                                    @onclick="CancelEdit">
+                                Отменить
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-warning btn-sm me-2"
+                                    @onclick="() => StartEdit(d)">
+                                Редактировать
+                            </button>
+
+                            <button class="btn btn-danger btn-sm"
+                                    @onclick="() => DeleteDepartment(d.DepartmentId)">
+                                Удалить
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (isCreateVisible)
+{
+    <div class="card p-3 mb-3">
+        <h5>Создание департамента</h5>
+
+        <input class="form-control mb-2"
+               placeholder="Название"
+               @bind="newDepartment.Name" />
+
+        <button class="btn btn-success" @onclick="CreateDepartment">
+            Сохранить
+        </button>
+
+        <button class="btn btn-secondary ms-2" @onclick="HideCreateForm">
+            Отмена
+        </button>
+    </div>
+}
+
+@code {
+    private List<DepartmentDto>? departments;
+
+    private bool isCreateVisible = false;
+
+    private DepartmentDto newDepartment = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDepartments();
+    }
+
+    private async Task LoadDepartments()
+    {
+        departments = await Http.GetFromJsonAsync<List<DepartmentDto>>("api/department");
+    }
+
+    private void ShowCreateForm()
+    {
+        isCreateVisible = true;
+    }
+
+    private void HideCreateForm()
+    {
+        isCreateVisible = false;
+        newDepartment = new DepartmentDto();
+    }
+
+    private async Task CreateDepartment()
+    {
+        await Http.PostAsJsonAsync("api/department", newDepartment);
+
+        await LoadDepartments();
+
+        HideCreateForm();
+    }
+
+    @*Изменить*@
+    private int? editId;
+    private DepartmentDto editDepartment = new();
+
+    private void StartEdit(DepartmentDto d)
+    {
+        editId = d.DepartmentId;
+
+        editDepartment = new DepartmentDto
+        {
+            DepartmentId = d.DepartmentId,
+            Name = d.Name
+        };
+    }
+
+    private async Task SaveEdit()
+    {
+        await Http.PutAsJsonAsync(
+            $"api/department/{editId}",
+            editDepartment
+        );
+
+        editId = null;
+        editDepartment = new DepartmentDto();
+
+        await LoadDepartments();
+    }
+
+    private void CancelEdit()
+    {
+        editId = null;
+        editDepartment = new DepartmentDto();
+    }
+
+    
+    @*Удаление*@
+    private async Task DeleteDepartment(int id)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Вы уверены, что хотите удалить департамент?"
+        );
+
+        if (!confirmed)
+            return;
+
+        await Http.DeleteAsync($"api/department/{id}");
+        await LoadDepartments();
+    }
+}
